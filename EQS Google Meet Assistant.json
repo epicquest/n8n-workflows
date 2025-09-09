@@ -1,0 +1,580 @@
+{
+  "name": "EQS Google Meet Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "EQ - Google Meet Link",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "google_meet_url",
+              "placeholder": "https://meet.google.com/xxx-xxxx-xxx",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "email_to",
+              "placeholder": "user@gmail.com, user2@gmail.com,",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "admin_email",
+              "placeholder": "user@gmail.com",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -544,
+        -240
+      ],
+      "id": "e8478f3a-dc1d-43c5-bec0-7382dc5f453f",
+      "name": "On form submission",
+      "webhookId": "69b82b23-3be9-4039-87b2-90f350260b13"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cloud.vexa.ai/bots",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "platform",
+              "value": "google_meet"
+            },
+            {
+              "name": "native_meeting_id",
+              "value": "={{ $json[\"google_meet_url\"].split(\"/\")[3] }}"
+            },
+            {
+              "name": "bot_name",
+              "value": "MyMeetingBot"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {}
+          }
+        }
+      },
+      "id": "094b77d5-d875-41fa-8253-b5943779c73e",
+      "name": "Add bot to meet1",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        240,
+        -240
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "B7aUMudBdhGsBSME",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.cloud.vexa.ai/transcripts/google_meet/{{ $json[\"constructed_meeting_url\"].split(\"/\")[3] }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b2844b21-a066-4934-b048-3eb1f4adef9d",
+      "name": "Get Vexa Transcript",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        464,
+        -240
+      ],
+      "typeVersion": 4.1,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "B7aUMudBdhGsBSME",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "40ee5a62-d7e4-4f2e-9f41-e073dd09e575",
+              "operator": {
+                "name": "filter.operator.equals",
+                "type": "string",
+                "operation": "equals"
+              },
+              "leftValue": "={{$json.status}}",
+              "rightValue": "completed"
+            },
+            {
+              "id": "371950e3-c1f8-4ba9-ba98-2d99b19b2803",
+              "leftValue": "={{$json.stopCommand}}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "062312d2-c38d-403e-bc6b-a7d4bcc7c4a0",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1136,
+        -208
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8e26570e-b25d-48be-88bc-9710f9feacf9",
+              "name": "google_meet_url",
+              "value": "={{ $json[\"google_meet_url\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "163857fb-f3a1-465f-b809-6f375e2c04e2",
+              "name": "emails",
+              "value": "={{ $json[\"email_to\"].split(\",\") }}",
+              "type": "string"
+            },
+            {
+              "id": "820076f4-ea73-45c5-93f3-51ebe617ef5f",
+              "name": "admin_email",
+              "value": "={{ $json[\"admin_email\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        16,
+        -240
+      ],
+      "id": "61ea5fdd-d995-46e4-8d5a-0a46d724b124",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {},
+      "id": "016ad744-9caa-4339-9029-9d1c9a2095f8",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        1360,
+        -48
+      ],
+      "webhookId": "eb08fa06-dc62-4bc2-94cd-cedcc1b50c41",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "fromEmail": "eqaiassistant@gmail.com",
+        "toEmail": "={{ $('Edit Fields').item.json.emails }}",
+        "subject": "=Meeting Notes - {{ $json.constructed_meeting_url}}",
+        "emailFormat": "text",
+        "text": "={{ $json.constructed_meeting_url }}\n\n{{ $json.jsonString }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1584,
+        -256
+      ],
+      "id": "44614d9a-3b20-4d9b-8dcd-e19fb9b1a9ea",
+      "name": "Send email",
+      "webhookId": "481113a8-a204-477a-a2f6-a4133da86c9d",
+      "credentials": {
+        "smtp": {
+          "id": "Lqgw2TOw82vY3ok9",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const outputItems = [];\nfor (const item of $input.all()) {\n  // Stringify the entire JSON object with indentation for readability\n  const jsonString = JSON.stringify(item.json, null, 2);\n\n  // Add the new stringified JSON to the output\n  outputItems.push({\n    json: {\n      jsonString: jsonString,\n      constructed_meeting_url: item.json.constructed_meeting_url,\n      email_to: item.json.email_to\n    }\n  });\n}\n\nreturn outputItems;"
+      },
+      "id": "ea1366df-6f60-4b1d-8c26-ae3880a3d977",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1360,
+        -256
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "formTitle": "EQ - Google Meet Link Delete",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "google meet url",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        832,
+        -608
+      ],
+      "id": "ef3e02aa-5e8a-4aa0-a182-64fcc51ef322",
+      "name": "delete bot",
+      "webhookId": "2f89ed86-5052-4847-bfdd-03edbf7856a2"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://api.cloud.vexa.ai/bots/{{ $json[\"platform\"]}}/{{ $json[\"native_meeting_id\"]}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "dd89d336-5dde-4ead-88ff-9e72e7069244",
+      "name": "remove bot",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1136,
+        -400
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "B7aUMudBdhGsBSME",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const transcript = $json; // full transcript\nconst items = Array.isArray(transcript.segments) \n    ? transcript.segments \n    : Array.isArray(transcript) \n        ? transcript \n        : []; // fallback to empty array\n\nlet found = false;\nconst keywords = [\"stop ai assistant\", \"kick ai assistant\", \"stop bot\"];\n\nfor (const entry of items) {\n  if (entry.text) {\n    const textLower = entry.text.trim().toLowerCase();\n    if (keywords.some(keyword => textLower.includes(keyword))) {\n      found = true;\n      break;\n    }\n  }\n}\n\n\nreturn { json: { stopCommand: found, ...$json } };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        -304
+      ],
+      "id": "44c53faa-4a65-429f-867b-018ef380d3af",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "371950e3-c1f8-4ba9-ba98-2d99b19b2803",
+              "leftValue": "={{$json.stopCommand}}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "9e122031-6fa8-46fc-9330-fe9ac9550d30",
+      "name": "Stop Command from chat",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        912,
+        -256
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input Validation and Sanitization\nconst items = [];\n\nfor (const item of $input.all()) {\n  const data = item.json;\n  const errors = [];\n\n  // Validate Google Meet URL (without URL library)\n  let meetingId = null;\n  let cleanUrl = null;\n\n  try {\n    const url = data.google_meet_url?.trim();\n    if (!url) {\n      errors.push('Google Meet URL is required');\n    } else {\n      // Basic Google Meet pattern\n      const meetRegex = /^https?:\\/\\/meet\\.google\\.com\\/([a-z0-9-]+)(?:[/?].*)?$/i;\n      const match = url.match(meetRegex);\n      if (!match) {\n        errors.push('Invalid Google Meet URL - must be a Google Meet link');\n      } else {\n        meetingId = match[1];\n        cleanUrl = url;\n      }\n    }\n  } catch (error) {\n    errors.push('Invalid URL format');\n  }\n\n  // Validate and clean email addresses\n  const emailString = data.email_to?.trim() || '';\n  const emails = emailString\n    .split(',')\n    .map(email => email.trim())\n    .filter(email => email && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email));\n\n  if (emails.length === 0) {\n    errors.push('At least one valid email address is required');\n  }\n\n  const emailAdminString = data.admin_email?.trim() || '';\n\n  // Create output item\n  items.push({\n    json: {\n      ...data,\n      google_meet_url: cleanUrl,\n      native_meeting_id: meetingId,\n      emails: emails,\n      admin_email: emailAdminString,\n      emailString: emails.join(', '),\n      validationErrors: errors,\n      isValid: errors.length === 0,\n      processId: `meet_${meetingId || 'invalid'}_${Date.now()}`,\n      createdAt: new Date().toISOString(),\n      pollAttempt: 0\n    }\n  });\n}\n\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        -240
+      ],
+      "id": "97c2adbf-4736-4019-969d-84c2136d9ed5",
+      "name": "Input Validation"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "validation-check",
+              "leftValue": "={{ $json.isValid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -192,
+        -240
+      ],
+      "id": "dae689da-7635-4fe0-bac5-b411f67b4342",
+      "name": "Validation Check"
+    },
+    {
+      "parameters": {
+        "fromEmail": "eqaiassistant@gmail.com",
+        "toEmail": "={{ $json.admin_email }}",
+        "subject": "Google Meet Assistant - Validation Error",
+        "emailFormat": "text",
+        "text": "There were validation errors with your Google Meet request:\\n\\n{{ $json.validationErrors.join('\\n') }}\\n\\nPlease correct these issues and try again.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        32
+      ],
+      "id": "1bdcd809-82f6-4f99-9e0d-32f704533ff8",
+      "name": "Send Validation Error",
+      "webhookId": "3943acaf-139e-42fa-a735-a91d16fd737f",
+      "credentials": {
+        "smtp": {
+          "id": "Lqgw2TOw82vY3ok9",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Input Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add bot to meet1": {
+      "main": [
+        [
+          {
+            "node": "Get Vexa Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Vexa Transcript": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Add bot to meet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get Vexa Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "delete bot": {
+      "main": [
+        [
+          {
+            "node": "remove bot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Stop Command from chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stop Command from chat": {
+      "main": [
+        [
+          {
+            "node": "remove bot",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Validation": {
+      "main": [
+        [
+          {
+            "node": "Validation Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation Check": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "696eac06-1512-4bca-9b62-d62454653800",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5aa78e7f1d3cdca8375cdbbb79c7404abf78f054c0cd251bc043337503dc5868"
+  },
+  "id": "aGR74IobjGmwpDE3",
+  "tags": []
+}
